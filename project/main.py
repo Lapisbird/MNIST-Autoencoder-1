@@ -24,8 +24,8 @@ transform = transforms.Compose([
     transforms.ToTensor()
 ])
 
-# Downloads the MNIST dataset and stores it in ./data
-trainset = MNIST(
+# Downloads the training portion of the MNIST dataset and stores it in ./data
+initial_trainset = MNIST(
     root='./data',
     train=True,  # specifies the training portion of the MNIST dataset
     download=True,
@@ -41,6 +41,17 @@ testset = MNIST(
 )
 
 
+
+#splitting the training set into a trainset and validation set
+
+train_proportion = 0.9
+
+num_train = int(len(initial_trainset) * train_proportion)
+num_val = len(initial_trainset) - num_train
+
+trainset, valset = torch.utils.data.random_split(initial_trainset, [num_train, num_val]) #randomly splits initial_trainset into the actual trainset and validation set (valset)
+
+
 # Creates a data loader for trainset
 trainloader = DataLoader(
     trainset,
@@ -50,8 +61,15 @@ trainloader = DataLoader(
 )
 
 
-testloader = torch.utils.data.DataLoader(
+testloader = DataLoader(
     testset,
+    batch_size=batch_size,
+    shuffle=True,
+    num_workers=num_workers
+)
+
+valloader = DataLoader(
+    valset, 
     batch_size=batch_size,
     shuffle=True,
     num_workers=num_workers
@@ -87,21 +105,22 @@ autoencoder = Autoencoder() #creates instance of Autoencoder class
 criterion = nn.BCELoss() #BCELoss (Binary Cross Entropy loss) specifies the loss between two binary or near-binary inputs. Such as the white or black of these characters
 optimizer = torch.optim.Adam(autoencoder.parameters()) #optimizer which takes as input all of the parameters of the model. Uses Adam (Adaptive Moment Estimation)
 
-num_epochs = 50
+num_epochs = 25
 
 #use the GPU to train if possible. Else CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device: " + ("GPU" if torch.cuda.is_available() else "CPU"))
 autoencoder.to(device)
 
-counter = 1
+
 
 for epoch in range(num_epochs):
 
-    running_loss = 0
-    batch_number = 0
+    train_running_loss = 0
+    val_running_loss = 0
 
-    for data in trainloader:
+    #Use enumerate to tally the total number of batches for avg running loss calculations later on
+    for train_batch_number, data in enumerate(trainloader, start = 1):
         img, _ = data #unpacks the data (which is in the form of a tuple), the first value of which are the images and the second is the label. We don't care about the label, so we use "_"
         img = img.view(img.size(0), -1) #the image is currently in the form a tensor of size (batch_size, 28, 28). We reshape (view) it so that it keeps the first dimension (batch_size) but the rest is squashed to 1 dimension. The -1 tells PyTorch to infer the dimension from the others, which turns out to be 28^2 = 784
 
@@ -111,18 +130,47 @@ for epoch in range(num_epochs):
         output = autoencoder(img) #generate an output using the batch of images. Note that 'output' is more than just a simple tensor. It is an instance of torch.Tensor, and includes an attribute grad_fn, which references a Function object which created the tensor, allowing PyTorch to ultimately trace back the operatations which resulted in the tensor and perform backpropogation.
         loss = criterion(output, img) #calculate a loss between the output and original input. loss itself is an instance of the torch.Tensor class. It stores a tensor of 0 dimension (1 value), representing the loss
 
-        running_loss += loss.item()
-        batch_number += 1
+        train_running_loss += loss.item()
 
         #backward
         optimizer.zero_grad() #zeros out the gradient. To be more specific, each parameter of the model has a .grad attribute. This is zeroed out
         loss.backward() #Using a computational graph which stores all of the operations which occured to result in the loss value, loss then performs backpropogation on the model, setting the .grad attribute for each parameter as it does so
         optimizer.step() #the optimizer then updates each parameter based on its .grad attribute. The process of updating any one parameter is independant from those of the rest, so order doesn't really matter
 
-    print(f"Epoch: {counter} out of {num_epochs} epochs  |  Avg Running Loss: {running_loss/batch_number}")
-    counter += 1
+
+    #calculate validation set running loss
+    for val_batch_number, data in enumerate(valset, start = 1):
+
+        img, _ = data
+        img = img.view(img.size(0), -1)
+        img = img.to(device)
+        output = autoencoder(img)
+        loss = criterion(output, img)
+
+        val_running_loss += loss.item()
+
+
+
+    print(f"Epoch: {epoch} out of {num_epochs} | Avg Train Run Loss: {train_running_loss/train_batch_number} | Avg Val Run Loss: {val_running_loss/val_batch_number}")
+
 
 print("training done!")
+
+test_running_loss = 0
+
+for test_batch_number, data in enumerate(testset, start = 1):
+    img, _  = data
+    img = img.view(img.size(0), -1)
+    img = img.to(device)
+    output = autoencoder(img)
+    loss = criterion(output, img)
+    test_running_loss += loss.item()
+
+print(f"TEST SET AVG LOSS: {test_running_loss/test_batch_number}")
+
+
+
+
 
 #get some test images and run them through the autoencoder
 test_images, _ = next(iter(testloader)) #uses iter and next, which are standard Python functions. Iter creates an interable of testloader, and next returns the first batch
