@@ -81,15 +81,23 @@ class Autoencoder(nn.Module):
     def __init__(self):
          super().__init__() #implcit super(Autoencoder, self)
          self.encoder = nn.Sequential( #encoder with two layers
-            nn.Linear(784, 128),
+            nn.Linear(784, 1600),
             nn.ReLU(),
-            nn.Linear(128, 24),
+            nn.Linear(1600, 1600),
             nn.ReLU(),
+            nn.Linear(1600, 512),
+            nn.ReLU(),
+            nn.Linear(512, 36),
+            nn.Sigmoid(),
             )
          self.decoder = nn.Sequential( 
-            nn.Linear(24, 128),
+            nn.Linear(36, 512),
             nn.ReLU(),
-            nn.Linear(128, 784),
+            nn.Linear(512, 1600),
+            nn.ReLU(),
+            nn.Linear(1600, 1600),
+            nn.ReLU(),
+            nn.Linear(1600, 784),
             nn.Sigmoid(),
             )
          
@@ -105,7 +113,7 @@ autoencoder = Autoencoder() #creates instance of Autoencoder class
 criterion = nn.BCELoss() #BCELoss (Binary Cross Entropy loss) specifies the loss between two binary or near-binary inputs. Such as the white or black of these characters
 optimizer = torch.optim.Adam(autoencoder.parameters()) #optimizer which takes as input all of the parameters of the model. Uses Adam (Adaptive Moment Estimation)
 
-num_epochs = 25
+num_epochs = 40
 
 #use the GPU to train if possible. Else CPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -177,15 +185,16 @@ test_images, _ = next(iter(testloader)) #uses iter and next, which are standard 
 
 test_outputs = autoencoder(test_images.to(device).view(test_images.size(0), -1)) #take the images, put them on the correct device, resize the dimensions, and send to model
 
+latent_space_images = autoencoder.encoder(test_images.to(device).view(test_images.size(0), -1)) #Let's look at the latent space images as well!
+latent_space_images = latent_space_images.detach().reshape(-1, 1, 6, 6).to("cpu") #reshape to 6x6 tensors (images)
+latent_space_images = F.pad(latent_space_images, (11, 11, 11, 11), 'constant', 0) #add 11 padding to add side so that 11 +_6 + 11 = 28
 
 
+test_images = test_images.detach().reshape(-1, 1, 28, 28).to("cpu") #We will first detach the tensor, which essentially removes all the computational graph data, as we don't want the operations we are about to do to be tracked. Also it helps improve memory efficiency
 
+test_outputs = test_outputs.detach().reshape(-1, 1, 28, 28).to("cpu") #Next, we reshape the tensor from (batch_size, 784) to (batch_size, 1, 28, 28). The "1" is important because the form (batch_size, channels, height, width) is expected by many PyTorch functions. Note that (test_images.size(0), 1, 28, 28) would have also been valid. Additionally, we also make sure this tensor is on the CPU so that we can visualize it
 
-test_images = test_images.detach().reshape(-1, 1, 28, 28).to("cpu") #We will first reshape the tensor from (batch_size, 784) to (batch_size, 1, 28, 28). The "1" is important because the form (batch_size, channels, height, width) is expected by many PyTorch functions. Note that (test_images.size(0), 1, 28, 28) would have also been valid. Additionally, we also make sure this tensor is on the CPU so that we can visualize it
-
-test_outputs = test_outputs.detach().reshape(-1, 1, 28, 28).to("cpu") #Next, we detach, which essentially removes all the computational graph data, as we don't want the operations we are about to do to be tracked. Also it helps improve memory efficiency
-
-concat_grid = torch.cat([test_images, test_outputs], 3) #Concatenates test_images and test_outputs into one tensor along dimension 3 (width, keeping in mind dimensions start at 0) so that they are side-by-side
+concat_grid = torch.cat([test_images, latent_space_images, test_outputs], 3) #Concatenates test_images and test_outputs into one tensor along dimension 3 (width, keeping in mind dimensions start at 0) so that they are side-by-side
 
 padding = 1
 
