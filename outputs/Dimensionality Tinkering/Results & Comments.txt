@@ -1,0 +1,27 @@
+A description of the autoencoder setup resulting in each figure. The variable between each is the number of layers and neurons per layer. The numbers given are for the encoder, but the decoder is an exact mirror.
+
+	1: 784 -> 128 -> 24
+
+This network worked pretty well. What I would expect for a basic MNIST autoencoder
+
+	2: 784 -> 128 -> 4
+
+With the reduced dimensionality of the latent space, the digits are noticeably blurrier. Additionally, some detail is lost or generalized. However, digits are mostly correct, with some 4s being turned into 9s and 3s into 8s.
+
+	3: 784 -> 1600 -> 784 -> 128 -> 4
+
+With the increased layer width and depth the characters are much sharper. As observed before, there are a few errors and generalizations of the more uniquely written digits, but it is mostly accurate.
+
+Of interesting note, when errors do occur, they seem to be in the form of good representations of the wrong digit. There do not seem to be many outputs which are unrecognizable as any digit. It appears the model has given high priority to the correct construction of digits (rather than constructing shapes which do not look like any digit but may be a good average of many digits).
+
+	4: 784 -> 1600 -> 3200 -> 1600 -> 784 -> 128 -> 4
+
+This result is similar to the last one, with the digits being perhaps a little less blurry.
+
+	5: 784 -> 1600 -> 1600 -> 3200 -> 3200 -> 3200 -> 1600 -> 784 -> 128 -> 16 -> 3
+
+Even with the expanded model, the reduction in latent space dimensionality is seemingly a difficult obstacle to overcome. Many characters seem to be 9s, with 4s, 7s, and 9s all becoming 9s. 1s stay 1s, 6s stay 6s, 0s stay 0s, and most 2s stay 2s (with some becoming an odd-looking 8). There are also many 3s, with many 3s, 5s, and 8s becoming 3s (interesting, no 8 becomes the odd looking 8 that some 2s become).
+
+All the characters are blurry, as a likely result of the neural network deciding to compromise so that no output is too far from the input. Additionally, it appears that variety in the construction of the same digit has been significantly reduced, with all occurrences of the same output digit looking very similar.
+
+Interestingly, it is of particular note that, like the last model, there are very few output digits that do not resemble any digit in particular or which seem like obvious amalgamations or compromises (the only potential example being the odd-looking 8). Even though there are no 7s at all, with nearly all 7s becoming 9s, the 9s still look very much like 9s at and not 7s. This is pure speculation, but perhaps the loss function is formulated in such a manner that it makes more sense for the network to pick a digit to construct and take a loss on the other digit (ie. Pick 9 and take a loss on all 7s that are constructed as 9s) rather than compromise between the two.
