@@ -154,11 +154,11 @@ plt.imshow(image_grid) #display the image grid as an image
 
 #save the plot image
 
-output_dir = '../outputs/'
-if not os.path.exists(output_dir):
+output_dir = './outputs/'
+if not os.path.exists(output_dir): #if no file exists, create it
     os.makedirs(output_dir)
 
-filename = "../outputs/MNIST-Autoencoder-input-output.png"
+filename = "./outputs/MNIST-Autoencoder-input-output.png"
 
 base_filename, file_extension = os.path.splitext(filename) #function to split filename into everything before the extension and the extension itself
 file_number = 1
