@@ -206,7 +206,7 @@ image_grid = torchvision.utils.make_grid(concat_grid) #Uses make_grid to form th
 image_grid = image_grid.permute(1,2,0).numpy() #permute dimensions to (height, width, channels) then convert to a numpy array. We permute the dimensions because matplotlib's imshow() expects them in that order, and convert to numpy array because imshow() needs that too
 
 plt.figure(figsize=(10,10)) #create a new figure for the plot with size 10 by 10 inches
-plt.imshow(image_grid) #display the image grid as an image
+plt.imshow(image_grid) #represent the image grid as an image
 
 
 #save the plot image
